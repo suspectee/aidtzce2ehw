@@ -25,6 +25,7 @@ async def test_create_room() -> None:
     payload = response.json()
     assert payload["title"] == "Platform interview"
     assert len(payload["roomId"]) == 8
+    assert payload["roomId"].isalnum()
 
 
 class FakeWebSocket:

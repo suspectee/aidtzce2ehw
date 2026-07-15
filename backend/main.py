@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import secrets
+import string
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
@@ -83,6 +84,7 @@ app.add_middleware(
 
 rooms: dict[str, Room] = {}
 COLORS = ["#e46d3c", "#6c8cff", "#55b98a", "#be78d3", "#d6a73f", "#3ba9ba"]
+ROOM_ID_ALPHABET = string.ascii_letters + string.digits
 
 
 def get_or_create_room(room_id: str, title: str | None = None) -> Room:
@@ -124,7 +126,7 @@ async def health() -> dict[str, str]:
 async def create_room(payload: CreateRoomRequest) -> dict[str, Any]:
     title = payload.title.strip()[:100] or "Frontend Engineer · Live interview"
     while True:
-        room_id = secrets.token_urlsafe(6).replace("-", "").replace("_", "")[:8]
+        room_id = "".join(secrets.choice(ROOM_ID_ALPHABET) for _ in range(8))
         if room_id not in rooms:
             break
     room = get_or_create_room(room_id, title)

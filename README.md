@@ -98,6 +98,8 @@ npm run test:integration
 .venv/bin/pytest tests/integration -q
 ```
 
+The live tests require permission to bind a localhost socket. In restricted IDE sandboxes that prohibit local sockets, pytest reports these cases as skipped rather than failed. Run the same command in a regular terminal or CI environment to execute the complete live-server coverage.
+
 The integration suite verifies:
 
 - room creation through `POST /api/rooms`

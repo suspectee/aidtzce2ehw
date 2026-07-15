@@ -19,10 +19,20 @@ from backend.main import app, rooms
 def live_server() -> Generator[str, None, None]:
     """Run the actual ASGI app on an ephemeral TCP port for this test module."""
     rooms.clear()
-    listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    listen_socket.bind(("127.0.0.1", 0))
-    listen_socket.listen()
+    listen_socket: socket.socket | None = None
+    try:
+        listen_socket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        listen_socket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        listen_socket.bind(("127.0.0.1", 0))
+        listen_socket.listen()
+    except PermissionError:
+        if listen_socket is not None:
+            listen_socket.close()
+        pytest.skip(
+            "Live integration tests require permission to bind an ephemeral "
+            "localhost socket; this environment blocks local sockets."
+        )
+
     port = listen_socket.getsockname()[1]
 
     config = uvicorn.Config(
@@ -116,6 +126,7 @@ def test_created_room_can_be_joined_using_the_client_protocol(live_server: str) 
 
     assert room["title"] == "Backend Engineer · Integration interview"
     assert len(room_id) == 8
+    assert room_id.isalnum()
 
     with connect(
         websocket_url(live_server, room_id, "interviewer-1", "Ada"),
