@@ -1,4 +1,46 @@
 const PYODIDE_URL = `${self.location.origin}/pyodide/`
+const LOAD_ATTEMPTS = 5
+
+const sleep = (milliseconds) => new Promise((resolve) => setTimeout(resolve, milliseconds))
+
+function shouldRetry(response) {
+  return response.status === 404 || response.status === 408 || response.status === 429 || response.status >= 500
+}
+
+async function fetchWithRetry(fetchFunction, input, init) {
+  let lastError
+
+  for (let attempt = 0; attempt < LOAD_ATTEMPTS; attempt += 1) {
+    try {
+      const response = await fetchFunction(input, init)
+      if (!shouldRetry(response) || attempt === LOAD_ATTEMPTS - 1) return response
+      lastError = new Error(`Request failed with HTTP ${response.status}.`)
+    } catch (error) {
+      lastError = error
+      if (attempt === LOAD_ATTEMPTS - 1) throw error
+    }
+
+    await sleep(400 * 2 ** attempt)
+  }
+
+  throw lastError
+}
+
+async function importWithRetry(url) {
+  let lastError
+
+  for (let attempt = 0; attempt < LOAD_ATTEMPTS; attempt += 1) {
+    try {
+      // A unique URL prevents the browser from reusing a rejected module request.
+      return await import(`${url}?load-attempt=${attempt}`)
+    } catch (error) {
+      lastError = error
+      if (attempt < LOAD_ATTEMPTS - 1) await sleep(400 * 2 ** attempt)
+    }
+  }
+
+  throw lastError
+}
 
 function displayValue(value) {
   if (typeof value === 'string') return value
@@ -108,8 +150,16 @@ async function runPython(runId, code) {
   const lines = []
   try {
     self.postMessage({ type: 'status', runId, text: 'Loading Python runtime…' })
-    const { loadPyodide } = await import(`${PYODIDE_URL}pyodide.mjs`)
-    const pyodide = await loadPyodide({ indexURL: PYODIDE_URL })
+    const nativeFetch = self.fetch.bind(self)
+    self.fetch = (input, init) => fetchWithRetry(nativeFetch, input, init)
+    const [{ loadPyodide }, wasmModule] = await Promise.all([
+      importWithRetry(`${PYODIDE_URL}pyodide.mjs`),
+      importWithRetry(`${PYODIDE_URL}pyodide.asm.mjs`),
+    ])
+    const pyodide = await loadPyodide({
+      indexURL: PYODIDE_URL,
+      createPyodideModule: wasmModule.default,
+    })
     disableNetwork()
     pyodide.setStdout({ batched: (text) => lines.push({ stream: 'stdout', text }) })
     pyodide.setStderr({ batched: (text) => lines.push({ stream: 'stderr', text }) })
