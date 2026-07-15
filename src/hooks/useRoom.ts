@@ -12,6 +12,12 @@ interface RoomMessage {
   participants?: Participant[]
 }
 
+function uniqueParticipants(participants: Participant[]) {
+  return Array.from(
+    new Map(participants.map((participant) => [participant.clientId, participant])).values(),
+  )
+}
+
 function getClientIdentity() {
   const fallbackId = `client-${Math.random().toString(36).slice(2, 10)}`
   try {
@@ -33,9 +39,7 @@ export function useRoom(roomId: string) {
   const [participants, setParticipants] = useState<Participant[]>([])
   const [connection, setConnection] = useState<ConnectionState>('connecting')
   const socketRef = useRef<WebSocket | null>(null)
-  const reconnectRef = useRef<number | null>(null)
   const broadcastRef = useRef<number | null>(null)
-  const aliveRef = useRef(true)
   const codeRef = useRef(code)
   const languageRef = useRef(language)
   const draftsRef = useRef<Partial<Record<LanguageId, string>>>({ javascript: code })
@@ -77,24 +81,29 @@ export function useRoom(roomId: string) {
   )
 
   useEffect(() => {
-    aliveRef.current = true
+    let disposed = false
     let attempt = 0
+    let reconnectTimer: number | null = null
+    let activeSocket: WebSocket | null = null
 
     const connect = () => {
-      if (!aliveRef.current) return
+      if (disposed) return
       const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
       const { clientId, name } = identityRef.current
       const query = new URLSearchParams({ client_id: clientId, name })
       const socket = new WebSocket(`${protocol}//${window.location.host}/ws/rooms/${roomId}?${query}`)
+      activeSocket = socket
       socketRef.current = socket
       setConnection(attempt === 0 ? 'connecting' : 'reconnecting')
 
       socket.onopen = () => {
+        if (disposed || socketRef.current !== socket) return
         attempt = 0
         setConnection('connected')
       }
 
       socket.onmessage = (event) => {
+        if (disposed || socketRef.current !== socket) return
         const message = JSON.parse(event.data) as RoomMessage
         if (message.type === 'room:snapshot') {
           if (typeof message.code === 'string' && message.language) {
@@ -106,7 +115,7 @@ export function useRoom(roomId: string) {
           }
           if (message.title) setTitle(message.title)
           if (typeof message.version === 'number') setVersion(message.version)
-          if (message.participants) setParticipants(message.participants)
+          if (message.participants) setParticipants(uniqueParticipants(message.participants))
         }
 
         if (message.type === 'code:update') {
@@ -125,23 +134,24 @@ export function useRoom(roomId: string) {
         }
 
         if (message.type === 'presence:update' && message.participants) {
-          setParticipants(message.participants)
+          setParticipants(uniqueParticipants(message.participants))
         }
       }
 
       socket.onclose = () => {
-        if (!aliveRef.current) return
+        if (disposed || socketRef.current !== socket) return
         attempt += 1
         setConnection(attempt > 3 ? 'offline' : 'reconnecting')
-        reconnectRef.current = window.setTimeout(connect, Math.min(1000 * attempt, 4000))
+        reconnectTimer = window.setTimeout(connect, Math.min(1000 * attempt, 4000))
       }
     }
 
     connect()
     return () => {
-      aliveRef.current = false
-      socketRef.current?.close()
-      if (reconnectRef.current) window.clearTimeout(reconnectRef.current)
+      disposed = true
+      activeSocket?.close()
+      if (socketRef.current === activeSocket) socketRef.current = null
+      if (reconnectTimer) window.clearTimeout(reconnectTimer)
       if (broadcastRef.current) window.clearTimeout(broadcastRef.current)
     }
   }, [roomId])

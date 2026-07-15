@@ -12,13 +12,15 @@ Pairwise is a focused workspace for live coding interviews. Opening the app crea
 - No DOM access, blocked common network APIs, and a five-second execution limit
 - Public test cases, console output, session timing, connection state, and revision tracking
 
-JavaScript uses the browser engine directly. Python uses a version-pinned [Pyodide](https://pyodide.org/) runtime that loads when the first Python run is requested. The room document is synchronized through FastAPI, but submitted code is never executed by the backend.
+JavaScript uses the browser engine directly. Python uses a version-pinned [Pyodide](https://pyodide.org/) runtime that is packaged with the Vite application and initializes when the first Python run is requested. The room document is synchronized through FastAPI, but submitted code is never executed by the backend.
 
 ## Prerequisites
 
 - Node.js 20 or newer with npm
 - Python 3.11 or newer
-- Internet access for dependency installation and the first Python/Pyodide run
+- Internet access for dependency installation
+
+The commands in this README target Linux, macOS, WSL, and Linux-based development containers. The npm scripts call Python tools from the POSIX virtual-environment directory, `.venv/bin`.
 
 ## One-time setup
 
@@ -36,33 +38,35 @@ source .venv/bin/activate
 pip install -r backend/requirements-dev.txt
 ```
 
-On Windows PowerShell, activate the environment with:
-
-```powershell
-.venv\Scripts\Activate.ps1
-```
-
 ## Run the application
 
-Start FastAPI in the first terminal:
-
-```bash
-npm run dev:api
-```
-
-The equivalent direct command is:
-
-```bash
-.venv/bin/uvicorn backend.main:app --reload --port 8000
-```
-
-Start Vite in a second terminal:
+Start the React client and FastAPI server together from one terminal:
 
 ```bash
 npm run dev
 ```
 
+`concurrently` labels the output as `client` and `server`. Press `Ctrl+C` once to stop both processes.
+
 Open `http://localhost:5173`. Vite proxies `/api` and `/ws` to FastAPI at `http://localhost:8000`.
+
+To debug either process separately, use two terminals:
+
+```bash
+# Terminal 1: FastAPI
+npm run dev:server
+
+# Terminal 2: Vite
+npm run dev:client
+```
+
+The direct FastAPI command is:
+
+```bash
+.venv/bin/uvicorn backend.main:app --reload --port 8000
+```
+
+`npm run dev:api` remains available as an alias for `npm run dev:server`.
 
 Useful server checks:
 
@@ -77,7 +81,7 @@ curl -X POST -H "Content-Type: application/json" -d '{"title":"Test interview"}'
 2. Click **Invite**, copy the room link, and open it in an incognito window or another browser.
 3. Type in one editor. The other editor should update and both windows should show two participants.
 4. Select JavaScript and click **Run code**. Console output should appear in the right panel.
-5. Select Python and run it. The first run takes longer while Pyodide downloads.
+5. Select Python and run it. The first run takes longer while the locally served Pyodide runtime initializes.
 6. Run `while (true) {}` as JavaScript. The worker should stop it after five seconds without affecting the API.
 
 ## Automated tests
@@ -125,6 +129,12 @@ npm run lint
 npm run build
 ```
 
+Build the app and smoke-test Python execution through the module worker:
+
+```bash
+npm run test:runner
+```
+
 Run every lint, build, unit, and integration check with one command:
 
 ```bash
@@ -142,6 +152,7 @@ npm run preview
 ```text
 src/                         React workspace, collaboration hook, and runner hook
 public/runner.worker.js      Disposable JavaScript/Python execution worker
+node_modules/pyodide/        Locally packaged Python/WASM runtime source
 backend/main.py              FastAPI room API and WebSocket protocol
 backend/test_main.py         Fast backend unit tests
 tests/integration/           Live HTTP/WebSocket client-server tests
@@ -154,4 +165,4 @@ The backend owns room creation, the latest room snapshot, participant presence, 
 
 The frontend owns editor drafts and browser execution. Every JavaScript or Python run starts in a fresh Worker. A runaway program is handled by terminating that Worker; the API process is never exposed to submitted code execution.
 
-For production, the natural next steps are Redis-backed room state and pub/sub for multiple API instances, authenticated expiring room links, durable interview records, rate limits, and a CRDT such as Yjs for conflict-free simultaneous keystrokes. Self-hosting the pinned Pyodide assets and enforcing a strict Content Security Policy would remove the runtime CDN dependency.
+For production, the natural next steps are Redis-backed room state and pub/sub for multiple API instances, authenticated expiring room links, durable interview records, rate limits, and a CRDT such as Yjs for conflict-free simultaneous keystrokes. The Pyodide assets are already served locally; a strict Content Security Policy would further harden browser execution.

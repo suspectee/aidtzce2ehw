@@ -1,6 +1,4 @@
-/* global loadPyodide */
-
-const PYODIDE_URL = 'https://cdn.jsdelivr.net/pyodide/v314.0.2/full/'
+const PYODIDE_URL = `${self.location.origin}/pyodide/`
 
 function displayValue(value) {
   if (typeof value === 'string') return value
@@ -110,7 +108,7 @@ async function runPython(runId, code) {
   const lines = []
   try {
     self.postMessage({ type: 'status', runId, text: 'Loading Python runtime…' })
-    importScripts(`${PYODIDE_URL}pyodide.js`)
+    const { loadPyodide } = await import(`${PYODIDE_URL}pyodide.mjs`)
     const pyodide = await loadPyodide({ indexURL: PYODIDE_URL })
     disableNetwork()
     pyodide.setStdout({ batched: (text) => lines.push({ stream: 'stdout', text }) })

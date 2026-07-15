@@ -4,30 +4,35 @@
   "version": "0.1.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "dev:api": ".venv/bin/uvicorn backend.main:app --reload --port 8000",
+    "dev": "concurrently --kill-others-on-fail --names client,server --prefix-colors cyan,green \"npm:dev:client\" \"npm:dev:server\"",
+    "dev:client": "vite",
+    "dev:server": ".venv/bin/uvicorn backend.main:app --reload --port 8000",
+    "dev:api": "npm run dev:server",
     "build": "tsc -b && vite build",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": ".venv/bin/pytest -q",
     "test:backend": ".venv/bin/pytest backend -q",
     "test:integration": ".venv/bin/pytest tests/integration -q",
+    "test:runner": "npm run build && node tests/runner-module-smoke.mjs",
     "test:python": ".venv/bin/pytest -q",
-    "check": "npm run lint && npm run build && .venv/bin/pytest -q"
+    "check": "npm run lint && npm run build && node tests/runner-module-smoke.mjs && .venv/bin/pytest -q"
   },
   "dependencies": {
+    "@codemirror/commands": "^6.8.0",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-html": "^6.4.9",
     "@codemirror/lang-javascript": "^6.2.4",
     "@codemirror/lang-json": "^6.0.2",
     "@codemirror/lang-python": "^6.2.1",
     "@codemirror/language": "^6.11.3",
-    "@codemirror/commands": "^6.8.0",
     "@codemirror/state": "^6.5.2",
     "@codemirror/theme-one-dark": "^6.1.3",
     "@codemirror/view": "^6.38.1",
+    "@lezer/highlight": "^1.2.3",
     "codemirror": "^6.0.2",
     "lucide-react": "^0.468.0",
+    "pyodide": "^314.0.2",
     "react": "^18.3.1",
     "react-dom": "^18.3.1"
   },
@@ -36,12 +41,14 @@
     "@types/react": "^18.3.18",
     "@types/react-dom": "^18.3.5",
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^10.0.3",
     "eslint": "^9.17.0",
     "eslint-plugin-react-hooks": "^5.1.0",
     "eslint-plugin-react-refresh": "^0.4.16",
     "globals": "^15.14.0",
     "typescript": "~5.6.2",
     "typescript-eslint": "^8.18.2",
-    "vite": "^6.0.5"
+    "vite": "^6.0.5",
+    "vite-plugin-static-copy": "^4.1.1"
   }
 }

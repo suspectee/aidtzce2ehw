@@ -2,7 +2,7 @@ import httpx
 import pytest
 from fastapi import WebSocketDisconnect
 
-from backend.main import app, room_socket, rooms
+from backend.main import Participant, app, get_or_create_room, room_socket, rooms
 
 
 @pytest.fixture
@@ -44,6 +44,19 @@ class FakeWebSocket:
         if not self.incoming:
             raise WebSocketDisconnect()
         return self.incoming.pop(0)
+
+
+def test_room_presence_deduplicates_reconnected_client() -> None:
+    room = get_or_create_room("presence-test")
+    first_socket = FakeWebSocket([])
+    replacement_socket = FakeWebSocket([])
+    participant = Participant(client_id="same-client", name="You", color="#e46d3c")
+
+    room.clients[first_socket] = participant  # type: ignore[index]
+    room.clients[replacement_socket] = participant  # type: ignore[index]
+
+    assert room.public_participants() == [participant.public()]
+    assert room.snapshot()["participants"] == [participant.public()]
 
 
 @pytest.mark.anyio

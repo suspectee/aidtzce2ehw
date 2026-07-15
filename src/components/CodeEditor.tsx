@@ -5,9 +5,11 @@ import { html } from '@codemirror/lang-html'
 import { javascript } from '@codemirror/lang-javascript'
 import { json } from '@codemirror/lang-json'
 import { python } from '@codemirror/lang-python'
+import { HighlightStyle, syntaxHighlighting } from '@codemirror/language'
 import { Compartment, EditorState } from '@codemirror/state'
 import { EditorView, keymap } from '@codemirror/view'
 import { indentWithTab } from '@codemirror/commands'
+import { tags } from '@lezer/highlight'
 import type { LanguageId } from '../types'
 
 interface CodeEditorProps {
@@ -38,44 +40,49 @@ const pairwiseTheme = EditorView.theme(
   {
     '&': {
       height: '100%',
-      backgroundColor: '#0d1823',
-      color: '#dce5ed',
+      backgroundColor: '#ffffff',
+      color: '#26343e',
       fontSize: '14px',
     },
     '.cm-content': {
       padding: '18px 0 80px',
-      caretColor: '#f0a57c',
+      caretColor: '#d85e32',
       fontFamily: '"SFMono-Regular", Consolas, "Liberation Mono", monospace',
       lineHeight: '1.72',
     },
     '.cm-line': { padding: '0 24px' },
-    '.cm-cursor, .cm-dropCursor': { borderLeftColor: '#f0a57c' },
+    '.cm-cursor, .cm-dropCursor': { borderLeftColor: '#d85e32' },
     '&.cm-focused .cm-selectionBackground, .cm-selectionBackground, .cm-content ::selection': {
-      backgroundColor: '#31547188',
+      backgroundColor: '#c9e2ff',
+      color: '#102a43',
     },
     '.cm-gutters': {
-      backgroundColor: '#0d1823',
-      color: '#536372',
-      border: 'none',
+      backgroundColor: '#f7f9fa',
+      color: '#8b98a2',
+      borderRight: '1px solid #e3e8eb',
       paddingLeft: '8px',
     },
-    '.cm-activeLine': { backgroundColor: '#142431' },
-    '.cm-activeLineGutter': { backgroundColor: '#142431', color: '#9cb0bf' },
-    '.cm-foldPlaceholder': { backgroundColor: '#243746', border: 'none', color: '#adc0cf' },
-    '.cm-tooltip': { backgroundColor: '#182936', border: '1px solid #2b4050' },
+    '.cm-activeLine': { backgroundColor: '#f3f7fa' },
+    '.cm-activeLineGutter': { backgroundColor: '#edf3f6', color: '#4b5d69' },
+    '.cm-foldPlaceholder': { backgroundColor: '#e7edf1', border: 'none', color: '#536672' },
+    '.cm-tooltip': { backgroundColor: '#ffffff', border: '1px solid #d5dde2', color: '#26343e' },
   },
-  { dark: true },
+  { dark: false },
 )
 
-const pairwiseHighlighting = EditorView.theme({
-  '.tok-keyword': { color: '#d995ca' },
-  '.tok-string': { color: '#a8d38a' },
-  '.tok-number': { color: '#e8ba7c' },
-  '.tok-comment': { color: '#617484', fontStyle: 'italic' },
-  '.tok-variableName': { color: '#c9d6df' },
-  '.tok-function': { color: '#7fc5dc' },
-  '.tok-propertyName': { color: '#8dc9dc' },
-})
+const pairwiseHighlighting = HighlightStyle.define([
+  { tag: [tags.keyword, tags.controlKeyword, tags.operatorKeyword], color: '#6f32a8', fontWeight: '600' },
+  { tag: [tags.string, tags.special(tags.string), tags.regexp], color: '#167338' },
+  { tag: [tags.number, tags.integer, tags.float], color: '#a34708' },
+  { tag: [tags.comment, tags.meta], color: '#687781', fontStyle: 'italic' },
+  { tag: tags.variableName, color: '#26343e' },
+  { tag: tags.function(tags.variableName), color: '#005ea8' },
+  { tag: [tags.propertyName, tags.attributeName], color: '#00677f' },
+  { tag: [tags.typeName, tags.className, tags.namespace], color: '#7440a8' },
+  { tag: [tags.bool, tags.atom, tags.null], color: '#9b2f68' },
+  { tag: [tags.operator, tags.punctuation], color: '#4c5963' },
+  { tag: tags.invalid, color: '#b42318', textDecoration: 'underline' },
+])
 
 export function CodeEditor({ value, language, onChange, onCursorChange }: CodeEditorProps) {
   const hostRef = useRef<HTMLDivElement>(null)
@@ -97,7 +104,7 @@ export function CodeEditor({ value, language, onChange, onCursorChange }: CodeEd
         keymap.of([indentWithTab]),
         languageCompartment.current.of(languageExtension(language)),
         pairwiseTheme,
-        pairwiseHighlighting,
+        syntaxHighlighting(pairwiseHighlighting),
         EditorView.lineWrapping,
         EditorView.updateListener.of((update) => {
           if (update.docChanged && !externalUpdateRef.current) {

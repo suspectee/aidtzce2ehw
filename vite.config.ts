@@ -1,8 +1,20 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
+import { viteStaticCopy } from 'vite-plugin-static-copy'
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [
+    react(),
+    viteStaticCopy({
+      targets: [
+        {
+          src: 'node_modules/pyodide/{pyodide.mjs,pyodide.asm.mjs,pyodide.asm.wasm,pyodide-lock.json,python_stdlib.zip}',
+          dest: 'pyodide',
+          rename: { stripBase: true },
+        },
+      ],
+    }),
+  ],
   build: {
     rollupOptions: {
       output: {

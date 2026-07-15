@@ -42,7 +42,10 @@ export function useRunner() {
 
       stopWorker()
       const runId = ++runIdRef.current
-      const worker = new Worker('/runner.worker.js')
+      const worker = new Worker('/runner.worker.js', {
+        type: 'module',
+        name: 'pairwise-runner',
+      })
       workerRef.current = worker
       setResult({
         lines: [],

@@ -61,6 +61,13 @@ class Room:
     clients: dict[WebSocket, Participant] = field(default_factory=dict)
     lock: asyncio.Lock = field(default_factory=asyncio.Lock)
 
+    def public_participants(self) -> list[dict[str, str]]:
+        unique = {
+            participant.client_id: participant.public()
+            for participant in self.clients.values()
+        }
+        return list(unique.values())
+
     def snapshot(self) -> dict[str, Any]:
         return {
             "type": "room:snapshot",
@@ -69,7 +76,7 @@ class Room:
             "code": self.code,
             "language": self.language,
             "version": self.version,
-            "participants": [participant.public() for participant in self.clients.values()],
+            "participants": self.public_participants(),
         }
 
 
@@ -112,7 +119,7 @@ async def broadcast_presence(room: Room) -> None:
         room,
         {
             "type": "presence:update",
-            "participants": [participant.public() for participant in room.clients.values()],
+            "participants": room.public_participants(),
         },
     )
 

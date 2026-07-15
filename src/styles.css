@@ -185,7 +185,7 @@ button, select { cursor: pointer; }
 .brief-footer { height: 47px; flex: none; gap: 7px; padding: 0 19px; color: #6d7a83; border-top: 1px solid #e1e6e7; font-size: 10px; font-weight: 600; }
 .brief-footer svg:last-child { margin-left: auto; }
 
-.editor-panel { display: flex; flex-direction: column; background: #0d1823; }
+.editor-panel { display: flex; flex-direction: column; background: #ffffff; }
 .editor-toolbar { height: 51px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 12px 0 18px; color: #a8b4bd; background: #12202d; border-bottom: 1px solid #243440; }
 .file-crumb { gap: 7px; min-width: 0; font-size: 10px; }
 .file-crumb > svg { flex: none; color: #e89870; }
@@ -210,8 +210,8 @@ button, select { cursor: pointer; }
 .code-editor { width: 100%; height: 100%; }
 .code-editor .cm-editor, .code-editor .cm-scroller { height: 100%; }
 .code-editor .cm-editor.cm-focused { outline: none; }
-.code-editor .cm-scroller { overflow: auto; scrollbar-width: thin; scrollbar-color: #304351 #0d1823; }
-.editor-statusbar { height: 27px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 13px; color: #728391; background: #0a141e; border-top: 1px solid #1e2e3a; font-family: 'DM Mono', monospace; font-size: 8.5px; }
+.code-editor .cm-scroller { overflow: auto; scrollbar-width: thin; scrollbar-color: #bcc7ce #f4f7f8; }
+.editor-statusbar { height: 27px; flex: none; display: flex; align-items: center; justify-content: space-between; padding: 0 13px; color: #75838d; background: #f5f7f8; border-top: 1px solid #dfe5e8; font-family: 'DM Mono', monospace; font-size: 8.5px; }
 .editor-statusbar > div { display: flex; align-items: center; gap: 13px; }
 .collab-status { gap: 5px; color: #77a78f; }
 
