@@ -1,14 +1,17 @@
 from __future__ import annotations
 
 import asyncio
+import os
 import secrets
 import string
 from dataclasses import dataclass, field
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, WebSocket, WebSocketDisconnect
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
 from pydantic import BaseModel
 
 
@@ -92,6 +95,12 @@ app.add_middleware(
 rooms: dict[str, Room] = {}
 COLORS = ["#e46d3c", "#6c8cff", "#55b98a", "#be78d3", "#d6a73f", "#3ba9ba"]
 ROOM_ID_ALPHABET = string.ascii_letters + string.digits
+FRONTEND_DIST = Path(
+    os.environ.get(
+        "PAIRWISE_FRONTEND_DIST",
+        Path(__file__).resolve().parents[1] / "dist",
+    )
+).resolve()
 
 
 def get_or_create_room(room_id: str, title: str | None = None) -> Room:
@@ -101,6 +110,26 @@ def get_or_create_room(room_id: str, title: str | None = None) -> Room:
             title=title or "Frontend Engineer · Live interview",
         )
     return rooms[room_id]
+
+
+def resolve_frontend_path(
+    request_path: str,
+    frontend_dist: Path = FRONTEND_DIST,
+) -> Path | None:
+    """Resolve a static file or the SPA shell without allowing path traversal."""
+    root = frontend_dist.resolve()
+    index = root / "index.html"
+    if not index.is_file():
+        return None
+
+    if request_path:
+        requested = (root / request_path).resolve()
+        if not requested.is_relative_to(root):
+            return None
+        if requested.is_file():
+            return requested
+
+    return index
 
 
 async def broadcast(room: Room, message: dict[str, Any]) -> None:
@@ -214,3 +243,31 @@ async def room_socket(
     finally:
         room.clients.pop(websocket, None)
         await broadcast_presence(room)
+
+
+@app.get("/{frontend_path:path}", include_in_schema=False)
+async def frontend(frontend_path: str) -> FileResponse:
+    if frontend_path in {"api", "ws"} or frontend_path.startswith(("api/", "ws/")):
+        raise HTTPException(status_code=404, detail="Not found")
+
+    file_path = resolve_frontend_path(frontend_path)
+    if file_path is None:
+        raise HTTPException(
+            status_code=404,
+            detail="Frontend build not found. Run `npm run build` first.",
+        )
+
+    media_type = {
+        ".mjs": "text/javascript",
+        ".wasm": "application/wasm",
+    }.get(file_path.suffix)
+    cache_control = (
+        "no-cache"
+        if file_path.name == "index.html"
+        else "public, max-age=3600"
+    )
+    return FileResponse(
+        file_path,
+        media_type=media_type,
+        headers={"Cache-Control": cache_control},
+    )

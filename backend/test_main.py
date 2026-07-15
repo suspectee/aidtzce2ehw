@@ -1,8 +1,17 @@
+from pathlib import Path
+
 import httpx
 import pytest
 from fastapi import WebSocketDisconnect
 
-from backend.main import Participant, app, get_or_create_room, room_socket, rooms
+from backend.main import (
+    Participant,
+    app,
+    get_or_create_room,
+    resolve_frontend_path,
+    room_socket,
+    rooms,
+)
 
 
 @pytest.fixture
@@ -57,6 +66,19 @@ def test_room_presence_deduplicates_reconnected_client() -> None:
 
     assert room.public_participants() == [participant.public()]
     assert room.snapshot()["participants"] == [participant.public()]
+
+
+def test_frontend_paths_serve_assets_and_spa_fallback(tmp_path: Path) -> None:
+    index = tmp_path / "index.html"
+    asset = tmp_path / "assets" / "app.js"
+    index.write_text("<div id='root'></div>", encoding="utf-8")
+    asset.parent.mkdir()
+    asset.write_text("console.log('pairwise')", encoding="utf-8")
+
+    assert resolve_frontend_path("", tmp_path) == index
+    assert resolve_frontend_path("room/interview-id", tmp_path) == index
+    assert resolve_frontend_path("assets/app.js", tmp_path) == asset
+    assert resolve_frontend_path("../secret.txt", tmp_path) is None
 
 
 @pytest.mark.anyio

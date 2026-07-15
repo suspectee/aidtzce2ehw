@@ -75,6 +75,42 @@ curl http://localhost:8000/api/health
 curl -X POST -H "Content-Type: application/json" -d '{"title":"Test interview"}' http://localhost:8000/api/rooms
 ```
 
+## Run with Docker
+
+The production image builds the React application and copies it into a Python runtime image. FastAPI serves the frontend, API, and WebSockets from one process on port 8000; Node.js is not included in the final image.
+
+Build the image:
+
+```bash
+docker build -t pairwise .
+```
+
+Run the container:
+
+```bash
+docker run --rm --name pairwise -p 8000:8000 pairwise
+```
+
+Open `http://localhost:8000`. Press `Ctrl+C` to stop and remove the container.
+
+To run it in the background instead:
+
+```bash
+docker run -d --name pairwise -p 8000:8000 pairwise
+docker logs -f pairwise
+docker stop pairwise
+docker rm pairwise
+```
+
+Check container and API health with:
+
+```bash
+docker inspect --format='{{json .State.Health}}' pairwise
+curl http://localhost:8000/api/health
+```
+
+Room state is currently stored in memory, so the container deliberately runs one Uvicorn worker and restarting it clears existing rooms.
+
 ## Manual interaction test
 
 1. Open `http://localhost:5173` and wait for the URL to change to `/room/<id>`.
@@ -157,6 +193,7 @@ backend/main.py              FastAPI room API and WebSocket protocol
 backend/test_main.py         Fast backend unit tests
 tests/integration/           Live HTTP/WebSocket client-server tests
 vite.config.ts               Vite build and development proxy configuration
+Dockerfile                   Multi-stage frontend build and Python runtime image
 ```
 
 ## Architecture and production boundaries
